@@ -1,0 +1,37 @@
+# Build / distribution (PyPI publishing artifacts)
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Tool caches
+.mypy_cache/
+.ruff_cache/
+
+# macOS
+.DS_Store
+
+# Project-specific generated output
+output/*
+list/*.mp3
+list/*.m4a
+list/*.txt
