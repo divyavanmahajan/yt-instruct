@@ -21,14 +21,19 @@ pip install -e .
 ## Running the Tool
 
 ```bash
-yt-instruct <URL>                                                   # single video
-yt-instruct url1 url2 --output-dir ./docs                          # multiple URLs
-yt-instruct <URL> --content-type ib --backend llm                  # specific type/backend
-yt-instruct --transcript-file transcript.txt --title "Name"        # skip download/transcription
-cat urls.txt | yt-instruct --url-file /dev/stdin                   # from file
+yt-instruct <URL>                                                        # single video
+yt-instruct url1 url2 --output-dir ./docs                               # multiple URLs
+yt-instruct <URL> --content-type ib --backend llm                       # specific type/backend
+yt-instruct --transcript-file transcript.txt --title "Name"             # skip download/transcription
+yt-instruct --audio-file recording.mp3 --title "Name"                   # skip download, transcribe from file
+yt-instruct --url-file urls.txt --keep --output-dir ./docs              # save intermediate files
+yt-instruct --url-file urls.txt --resume --output-dir ./docs            # resume interrupted run
+cat urls.txt | yt-instruct --url-file /dev/stdin                        # from file
 ```
 
-Key options: `--keep` (keep audio/transcript), `--merge` (combine into one doc), `--content-type [tutorial|lecture|ib|auto]`, `--backend [anthropic|llm|nvidia]`, `--model TEXT`, `--prompt-file PATH`, `--language LANG`.
+Key options: `--keep` (keep audio/transcript), `--merge` (combine into one doc), `--resume` (skip already-done videos), `--content-type [tutorial|lecture|ib|auto]`, `--backend [anthropic|llm|nvidia]`, `--model TEXT`, `--prompt-file PATH`, `--language LANG`, `--draft` (frontmatter draft flag).
+
+**File resolution:** `--audio-file` and `--transcript-file` fall back to `--output-dir` if the file isn't found at the given path.
 
 ## Running Tests
 
@@ -42,8 +47,8 @@ The `tests/` directory is currently empty — no tests exist yet.
 
 Four modules with clean separation:
 
-- **`cli.py`** — Click CLI, orchestration, batch processing, error recovery, temp dir lifecycle
-- **`downloader.py`** — yt-dlp wrapper; produces `VideoInfo` dataclass (title, channel, url, duration, audio_path)
+- **`cli.py`** — Click CLI, orchestration, batch processing, error recovery, temp dir lifecycle, frontmatter injection, resume logic
+- **`downloader.py`** — yt-dlp wrapper; produces `VideoInfo` dataclass (title, channel, url, duration, audio_path, description); also `fetch_info()` for lightweight metadata fetch (no download)
 - **`transcriber.py`** — Mistral voxtral API call; returns plain text transcript
 - **`generator.py`** — Multi-backend LLM generation; three backends (`generate_anthropic`, `generate_llm`, `generate_nvidia`), auto content-type classification, template variable substitution
 

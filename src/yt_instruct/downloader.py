@@ -15,6 +15,7 @@ class VideoInfo:
     url: str
     duration: int | None
     audio_path: Path | None
+    description: str = ""
 
 
 def _check_ffmpeg() -> None:
@@ -24,6 +25,21 @@ def _check_ffmpeg() -> None:
             "ffmpeg is required but not found. "
             "Install it with: brew install ffmpeg  (macOS) or apt install ffmpeg  (Linux)"
         )
+
+
+def fetch_info(url: str) -> "VideoInfo":
+    """Fetch video metadata without downloading audio (lightweight network call)."""
+    opts = {"quiet": True, "no_warnings": True}
+    with YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+    return VideoInfo(
+        title=info.get("title", url),
+        channel=info.get("uploader") or info.get("channel", "Unknown"),
+        url=url,
+        duration=info.get("duration"),
+        audio_path=None,
+        description=info.get("description") or "",
+    )
 
 
 def resolve_urls(url: str) -> list[str]:
@@ -85,4 +101,5 @@ def download_audio(url: str, tmp_dir: Path, audio_format: str = "mp3") -> VideoI
         url=url,
         duration=info.get("duration"),
         audio_path=audio_path,
+        description=info.get("description") or "",
     )
