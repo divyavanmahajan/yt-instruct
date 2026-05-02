@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.2.0] - 2026-05-02
+
+### Added
+- `--no-generate` flag: stop after transcription and skip the LLM generation step. The transcript is always saved to `<output-dir>/<slug>_transcript.txt`. Useful when you only need the raw transcript.
+
 ## [1.1.0] - 2026-05-02
 
 ### Changed

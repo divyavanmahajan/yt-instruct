@@ -31,7 +31,7 @@ yt-instruct --url-file urls.txt --resume --output-dir ./docs            # resume
 cat urls.txt | yt-instruct --url-file /dev/stdin                        # from file
 ```
 
-Key options: `--keep` (keep audio/transcript), `--merge` (combine into one doc), `--resume` (skip already-done videos), `--content-type [tutorial|lecture|ib|auto]`, `--backend [anthropic|llm|nvidia]`, `--model TEXT`, `--prompt-file PATH`, `--language LANG`, `--draft` (frontmatter draft flag).
+Key options: `--keep` (keep audio/transcript), `--merge` (combine into one doc), `--resume` (skip already-done videos), `--no-generate` (stop after transcription, skip LLM), `--content-type [tutorial|lecture|ib|auto]`, `--backend [anthropic|llm|nvidia]`, `--model TEXT`, `--prompt-file PATH`, `--language LANG`, `--draft` (frontmatter draft flag).
 
 **File resolution:** `--audio-file` and `--transcript-file` fall back to `--output-dir` if the file isn't found at the given path.
 

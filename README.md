@@ -35,6 +35,7 @@ Options:
   --keep                         Keep intermediate audio + transcript files
   --merge                        Merge all videos into one document
   --resume                       Skip already-generated outputs; reuse cached transcripts
+  --no-generate                  Stop after transcription; skip LLM generation
   --content-type [tutorial|lecture|ib|auto]
                                  Prompt style [default: auto]
   --backend [anthropic|llm|nvidia]
@@ -146,3 +147,7 @@ yt-instruct --url-file urls.txt --resume --output-dir ./docs
 `--resume` checks at two levels per video:
 1. Output `.md` already exists → skip entirely
 2. Cached `*_transcript.txt` exists (saved by `--keep`) → skip download and transcription, regenerate only
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.

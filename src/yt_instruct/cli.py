@@ -150,6 +150,12 @@ def _resolve_input_file(path: Path, output_dir: Path) -> Path:
         "If a cached transcript (from --keep) exists, skips download and transcription too."
     ),
 )
+@click.option(
+    "--no-generate",
+    is_flag=True,
+    default=False,
+    help="Stop after transcription; skip the LLM generation step. Transcript is always saved.",
+)
 def cli(
     urls,
     url_file,
@@ -168,6 +174,7 @@ def cli(
     title,
     draft,
     resume,
+    no_generate,
 ):
     """Convert YouTube videos into structured markdown instruction documents.
 
@@ -218,6 +225,8 @@ def cli(
     if transcript_file:
         if urls or url_file or audio_file:
             raise click.UsageError("--transcript-file cannot be combined with URLs, --url-file, or --audio-file.")
+        if no_generate:
+            raise click.UsageError("--no-generate has no effect with --transcript-file (nothing to transcribe).")
         output_dir.mkdir(parents=True, exist_ok=True)
         transcript_file = _resolve_input_file(transcript_file, output_dir)
         transcript = transcript_file.read_text(encoding="utf-8").strip()
@@ -260,8 +269,12 @@ def cli(
             click.echo(f"  ERROR transcribing: {e}", err=True)
             sys.exit(1)
         click.echo(f"  Transcript: {len(transcript)} chars")
-        if keep:
-            _transcript_cache_path(output_dir, resolved_title).write_text(transcript, encoding="utf-8")
+        transcript_out = _transcript_cache_path(output_dir, resolved_title)
+        if keep or no_generate:
+            transcript_out.write_text(transcript, encoding="utf-8")
+        if no_generate:
+            click.echo(f"  Transcript written: {transcript_out}")
+            return
         click.echo(f"  Generating ({content_type}, backend={backend}{lang_note})...")
         try:
             markdown = generate(
@@ -361,10 +374,16 @@ def cli(
                     click.echo(f"  ERROR transcribing {url}: {e}", err=True)
                     continue
                 click.echo(f"  Transcript: {len(transcript)} chars")
-                if keep:
-                    _transcript_cache_path(output_dir, video.title).write_text(transcript, encoding="utf-8")
+                transcript_out = _transcript_cache_path(output_dir, video.title)
+                if keep or no_generate:
+                    transcript_out.write_text(transcript, encoding="utf-8")
 
             # Step 3: Generate
+            if no_generate:
+                transcript_out = _transcript_cache_path(output_dir, video.title)
+                click.echo(f"  Transcript written: {transcript_out}")
+                continue
+
             lang_note = f", language={language}" if language else ""
             click.echo(f"  Generating ({content_type}, backend={backend}{lang_note})...")
             try:
@@ -402,8 +421,11 @@ def cli(
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
     if not results:
-        click.echo("\nNo documents generated.", err=True)
-        sys.exit(1)
+        if not no_generate:
+            click.echo("\nNo documents generated.", err=True)
+            sys.exit(1)
+        click.echo(f"\nDone. Transcripts written to {output_dir}/")
+        return
 
     # Merge mode: combine all into one file
     if merge:
