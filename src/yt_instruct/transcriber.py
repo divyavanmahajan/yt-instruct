@@ -21,6 +21,8 @@ def transcribe(audio_path: Path, model: str = "voxtral-mini-latest") -> str:
         result = client.audio.transcriptions.complete(
             model=model,
             file={"file_name": audio_path.name, "content": f},
+            diarize=True,
+            timestamp_granularities=["segment"],
         )
 
     transcript = result.text
