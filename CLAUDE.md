@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Project Does
 
-`yt-instruct` is a Python CLI tool that converts YouTube videos into structured markdown instruction documents. The pipeline is: URL → audio download (yt-dlp) → transcription (Mistral voxtral) → LLM document generation (Anthropic/llm/NVIDIA).
+`yt-instruct` is a Python CLI tool that converts YouTube videos into structured markdown instruction documents. The pipeline is: URL → audio download (yt-dlp) → transcription (Mistral voxtral) → LLM document generation (Anthropic API / Claude CLI / llm / NVIDIA).
 
 ## Development Setup
 
@@ -15,8 +15,9 @@ pip install -e .
 **Runtime requirements:**
 - `ffmpeg` installed and on PATH
 - `MISTRAL_API_KEY` — always required for transcription
-- `ANTHROPIC_API_KEY` — required for default backend
+- `ANTHROPIC_API_KEY` — required for default `--backend anthropic`; stripped (ignored) for `--backend claude-cli`
 - `NVIDIA_API_KEY` — required only for `--backend nvidia`
+- `--backend claude-cli` needs the `claude` CLI installed and logged in (bills your Claude subscription, not the API)
 
 ## Running the Tool
 
@@ -31,7 +32,7 @@ yt-instruct --url-file urls.txt --resume --output-dir ./docs            # resume
 cat urls.txt | yt-instruct --url-file /dev/stdin                        # from file
 ```
 
-Key options: `--keep` (keep audio/transcript), `--merge` (combine into one doc), `--resume` (skip already-done videos), `--no-generate` (stop after transcription, skip LLM), `--content-type [tutorial|lecture|ib|auto]`, `--backend [anthropic|llm|nvidia]`, `--model TEXT`, `--prompt-file PATH`, `--language LANG`, `--draft` (frontmatter draft flag).
+Key options: `--keep` (keep audio/transcript), `--merge` (combine into one doc), `--resume` (skip already-done videos), `--no-generate` (stop after transcription, skip LLM), `--content-type [tutorial|lecture|ib|auto]`, `--backend [anthropic|claude-cli|llm|nvidia]`, `--model TEXT` (ignored by `claude-cli`), `--prompt-file PATH`, `--language LANG`, `--draft` (frontmatter draft flag).
 
 **File resolution:** `--audio-file` and `--transcript-file` fall back to `--output-dir` if the file isn't found at the given path.
 
@@ -50,7 +51,7 @@ Four modules with clean separation:
 - **`cli.py`** — Click CLI, orchestration, batch processing, error recovery, temp dir lifecycle, frontmatter injection, resume logic
 - **`downloader.py`** — yt-dlp wrapper; produces `VideoInfo` dataclass (title, channel, url, duration, audio_path, description); also `fetch_info()` for lightweight metadata fetch (no download)
 - **`transcriber.py`** — Mistral voxtral API call; returns plain text transcript
-- **`generator.py`** — Multi-backend LLM generation; three backends (`generate_anthropic`, `generate_llm`, `generate_nvidia`), auto content-type classification, template variable substitution
+- **`generator.py`** — Multi-backend LLM generation; four backends (`generate_anthropic`, `generate_claude_cli`, `generate_llm`, `generate_nvidia`), auto content-type classification, template variable substitution. `generate_claude_cli` shells out to `claude -p` (via `_run_claude_cli`) and strips `ANTHROPIC_API_KEY` from the subprocess env so the CLI authenticates against the Claude subscription instead of the metered API
 
 ## Prompt Templates
 

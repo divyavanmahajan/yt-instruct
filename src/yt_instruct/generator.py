@@ -1,7 +1,9 @@
-"""Instruction document generator using Claude (Anthropic SDK or llm library) or NVIDIA NIM."""
+"""Instruction document generator using Claude (Anthropic SDK, Claude CLI, or llm library) or NVIDIA NIM."""
 
 import importlib.resources
 import os
+import shutil
+import subprocess
 from pathlib import Path
 
 from .downloader import VideoInfo
@@ -206,6 +208,77 @@ def generate_nvidia(
     return "".join(chunks)
 
 
+def _claude_cli_env() -> dict[str, str]:
+    """Environment for the `claude` CLI subprocess.
+
+    Strip ANTHROPIC_API_KEY so the CLI authenticates against the user's Claude
+    subscription (Pro/Max OAuth login) rather than the metered pay-as-you-go API.
+    The CLI resolves ANTHROPIC_API_KEY ahead of the subscription login, so leaving
+    it set would silently bill the API instead.
+    """
+    env = os.environ.copy()
+    env.pop("ANTHROPIC_API_KEY", None)
+    return env
+
+
+def _run_claude_cli(system: str, user: str, timeout: int = 600) -> str:
+    """Invoke `claude -p` in print mode and return its stdout."""
+    if not shutil.which("claude"):
+        raise RuntimeError(
+            "The `claude` CLI was not found on PATH. Install Claude Code and run "
+            "`claude` once to log in with your subscription before using "
+            "--backend claude-cli."
+        )
+    try:
+        result = subprocess.run(
+            ["claude", "-p", system],
+            input=user,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=_claude_cli_env(),
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(f"claude CLI timed out after {timeout}s.") from exc
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"claude CLI exited with code {result.returncode}: "
+            f"{result.stderr.strip() or result.stdout.strip()}"
+        )
+    output = result.stdout.strip()
+    if not output:
+        raise RuntimeError("claude CLI produced no output.")
+    return output
+
+
+def _detect_content_type_claude_cli(video: VideoInfo) -> str:
+    prompt = AUTO_CLASSIFY_PROMPT.format(title=video.title, channel=video.channel)
+    result = _run_claude_cli(prompt, "", timeout=120).strip().lower()
+    return result if result in ("adhd", "tutorial", "lecture", "ib") else "tutorial"
+
+
+def generate_claude_cli(
+    video: VideoInfo,
+    transcript: str,
+    content_type: str,
+    prompt_file: Path | None,
+    language: str | None = None,
+) -> str:
+    """Generate instruction document via the Claude CLI (uses the Claude subscription).
+
+    Mirrors the anthropic backend but shells out to `claude -p` so generation is
+    billed against a Pro/Max subscription instead of the metered API. `model` is
+    intentionally ignored — the CLI uses its own configured default model.
+    """
+    resolved_type = content_type
+    if content_type == "auto":
+        resolved_type = _detect_content_type_claude_cli(video)
+
+    system_prompt = _load_prompt(resolved_type, prompt_file)
+    system, user = _build_messages(video, transcript, resolved_type, system_prompt, language)
+    return _run_claude_cli(system, user)
+
+
 def generate(
     video: VideoInfo,
     transcript: str,
@@ -218,9 +291,13 @@ def generate(
     """Dispatch to the appropriate backend."""
     if backend == "anthropic":
         return generate_anthropic(video, transcript, content_type, model, prompt_file, language)
+    elif backend == "claude-cli":
+        return generate_claude_cli(video, transcript, content_type, prompt_file, language)
     elif backend == "llm":
         return generate_llm(video, transcript, content_type, model, prompt_file, language)
     elif backend == "nvidia":
         return generate_nvidia(video, transcript, content_type, model, prompt_file, language)
     else:
-        raise ValueError(f"Unknown backend: {backend!r}. Choose 'anthropic', 'llm', or 'nvidia'.")
+        raise ValueError(
+            f"Unknown backend: {backend!r}. Choose 'anthropic', 'claude-cli', 'llm', or 'nvidia'."
+        )

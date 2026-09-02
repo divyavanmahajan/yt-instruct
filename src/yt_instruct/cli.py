@@ -82,7 +82,7 @@ def _resolve_input_file(path: Path, output_dir: Path) -> Path:
 )
 @click.option(
     "--backend",
-    type=click.Choice(["anthropic", "llm", "nvidia"], case_sensitive=False),
+    type=click.Choice(["anthropic", "claude-cli", "llm", "nvidia"], case_sensitive=False),
     default="anthropic",
     show_default=True,
     help="LLM backend to use.",
@@ -186,6 +186,7 @@ def cli(
     REQUIRED ENVIRONMENT VARIABLES
       MISTRAL_API_KEY      Always required (transcription).
       ANTHROPIC_API_KEY    Required for --backend anthropic (default).
+                           Ignored (stripped) for --backend claude-cli.
       NVIDIA_API_KEY       Required for --backend nvidia.
 
     \b
@@ -198,6 +199,8 @@ def cli(
     \b
     BACKENDS
       anthropic  Anthropic Python SDK (default model: claude-sonnet-4-6).
+      claude-cli Claude Code CLI (`claude -p`); bills your Claude subscription,
+                 not the API. Requires the `claude` CLI, logged in. Ignores --model.
       llm        Simon Willison's llm CLI library.
       nvidia     NVIDIA NIM API via OpenAI-compatible endpoint.
 
